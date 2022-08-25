@@ -1,0 +1,15 @@
+
+#define function getTargetSaleTime(int256) public view returns (int256)
+#define function getVRGDAPrice(int256, uint256) public view returns (uint256)
+
+
+#define constant TARGET_PRICE = 0x00;       // ( int256 )
+#define constant PRICE_DECAY_PERCENT = 0x00; // ( uint256 )
+
+// (int256 _targetPrice, int256 _priceDecayPercent)
+// does the flag to override these exist?
+
+
+#define macro MAIN() = {
+
+}
