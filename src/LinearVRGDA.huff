@@ -1,6 +1,5 @@
 #include "./utils/signedWadMath.huff"
 
-
 #define function getTargetSaleTime(int256) public view returns (int256)
 #define function getVRGDAPrice(int256, uint256) public view returns (uint256)
 
@@ -10,11 +9,12 @@
 // in order to inline the correct constants 
 #define constant TARGET_PRICE = 0x00;       // ( int256 )
 #define constant DECAY_CONSTANT = 0x00; // ( uint256 )
+// Also will need to do this within the deploy script constructor
+#define constant PER_TIME_UNIT = 0x00;
+
 
 // (int256 _targetPrice, int256 _priceDecayPercent)
 // does the flag to override these exist?
-
-
 #define macro GET_VRGDA_PRICE() = takes(2) returns(1) {
     // Inputs : [timeSinceStart, Sold]
 
@@ -23,8 +23,7 @@
     0x01                    // [1, sold, timeSinceStart]
     add                     // [1 + sold, timeSinceStart]
     TO_WAD_UNSAFE()         // [wad(1 + sold), timeSinceStart]
-
-    // TODO: include get target sale time macro
+    GET_TARGET_SALE_TIME()  // TODO: UPDATE STACK AFTER ADDING THIS
 
     swap1                   // (timeSinceStart, wad(1 + sold))
     sub                     // (timeSinceStart - wad(1 + sold), wad(1 + sold))
@@ -36,6 +35,26 @@
     [TARGET_PRICE]
     WAD_MUL()
 
+    0x00 dup1 mstore
+    0x00 0x20 return
+}
+
+
+
+#define macro GET_TARGET_SALE_TIME() = takes(1) returns(0) {
+    // init state = [sold]
+    [PER_TIME_UNIT] 
+    swap1
+    UNSAFE_WAD_DIV()
+}
+
+
+// Public view function
+#define macro GET_TARGET_SALE_TIME_EXTERNAL() = {
+    0x04 calldata
+    GET_TARGET_SALE_TIME()
+    
+    
     0x00 dup1 mstore
     0x00 0x20 return
 }
