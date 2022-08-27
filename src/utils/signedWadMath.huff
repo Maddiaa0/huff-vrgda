@@ -24,27 +24,23 @@
 }
 
 
-#define macro UNSAFE_WAD_MUL = takes(2) returns(1) {
+#define macro UNSAFE_WAD_MUL() = takes(2) returns(1) {
     mul [WAD] sdiv
 }
 
 
-#define macro UNSAFE_WAD_DIV = takes(2) returns(1) {
+#define macro UNSAFE_WAD_DIV() = takes(2) returns(1) {
                                 // init [x,y]
      [WAD] mul                  // [(x * 1e18), y]
      sdiv             
 }
 
 // complex af
-#define macro UNSAFE_DIV = takes(2) returns(1) {
+#define macro UNSAFE_DIV() = takes(2) returns(1) {
     sdiv
 }
 
-
-
-// TODO: gotta to some fun swaps in here
-
-
+// wadMul(int256 x, int256 y) pure returns (int256)
 #define macro WAD_MUL() = takes(2) returns(1) {
                       // [x,y]
     
@@ -61,24 +57,39 @@
     iszero            // [iszero(0), y==(r/x),r,x,y]
     or                // [iszero(0) || y==(r/x) ,r,x,y]
     iszero            // [iszero(iszero(0) || y==(r/x)),r,x,y]
-    error
-    jumpi
+    error jumpi
+    continue jump
 
+
+    // TODO: pass this one in as a param so that we dont have to use another jump
     error:
         0x00 dup1 revert
 
+    continue:
     // [r,x,y]
 
     // Make sure the stack ordering is correct here    
     [WAD]
+    swap1
     sdiv            // [r,x,y]
 
     // clean stack
     swap2 pop pop   // [r]      
+
     
 }
 
-#define macro wadDiv() = takes(2) returns(1) {
+// test wad mul for positive numbers
+#define test TEST_WAD_MUL() = {
+    0xDE0B6B3A7640000       // [y (1e18)]
+    0x1BC16D674EC80000      // [x (2e18),y ]
+    WAD_MUL()               // result
+
+    0x1BC16D674EC80000
+    // eq ASSERT()
+}
+
+#define macro WAD_DIV() = takes(2) returns(1) {
                         // [x,y]
     dup1                // [x,x,y]
     [WAD] dup1          // [w,w,x,x,y]
@@ -86,66 +97,45 @@
 
     mul                 // [r,w,x,y]
     dup1                // [r,r,w,x,y]
-    swap2               // [w,r,r,x,y]    
+    swap2               // [w,r,r,x,y]
+    swap1               // [r,w,r,x,y]    
 
     sdiv                // [r/w,r,x,y]
     dup3                // [x,r/w,r,x,y]
     eq                  // [x==(r/w),r,x,y]
 
-    dup3                // [y,x==(r/w),r,x,y]
+    dup4                // [y,x==(r/w),r,x,y]
     iszero              // [iszero(y),x==(r/w),r,x,y]
+    iszero              // [!iszero(y) && x==(r/w),r,x,y]
     and                 // [iszero(y) && x==(r/w),r,x,y]
     iszero              // [iszero(iszero(y) && x==(r/w)),r,x,y]
     error jumpi
+    // TODO: refactor this out
+    continue jump
+
 
     error:
         0x00 dup1 revert
 
+    continue:
+
     // TRIPLE CHECK ACCOUNTING
     // [r,x,y]
     swap1             // [x,r,y]
-    swap2             // [y,r,x]
-    sdiv              // [y/r,x]
-
-    swap1             // [x,y/r]
-    pop               // [y/r]
+    pop               // [r,y]
+    sdiv              // [r/y]
 }
 
-////////////////////////////////////////////////////////////////
-//             SIMPLIFIED FIXED POINT OPERATIONS              //
-////////////////////////////////////////////////////////////////
+// test wad mul for positive numbers
+#define test TEST_WAD_MUL() = {
+    0xDE0B6B3A7640000       // [y (1e18)]
+    0x1BC16D674EC80000      // [x (2e18),y]
+    WAD_MUL()               // result
 
-// https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L13
-#define macro MUL_WAD_DOWN(fail) = takes (2) returns (1) {
-    // Input stack:            [x, y]
-    [WAD]                   // [WAD, x, y]
-    ARRANGE_STACK_MULWAD()  // [x, y, WAD]
-    MUL_DIV_DOWN(fail)      // [result]
+    0xDE0B6B3A7640000
+    // eq ASSERT()
 }
 
-// https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L17
-#define macro MUL_WAD_UP(fail) = takes (2) returns (1) {
-    // Input stack:            [x, y]
-    [WAD]                   // [WAD, x, y]
-    ARRANGE_STACK_MULWAD()  // [x, y, WAD]
-    MUL_DIV_UP(fail)        // [result]
-}
-
-// https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L21
-#define macro DIV_WAD_DOWN(fail) = takes (2) returns (1) {
-    // Input stack:            [x, y]
-    [WAD]                   // [WAD, x, y]
-    ARRANGE_STACK_DIVWAD()  // [x, WAD, y]
-    MUL_DIV_DOWN(fail)
-}
-
-// https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L25
-#define macro DIV_WAD_UP(fail) = takes (2) returns (1) {
-    // Input stack:            [x, y]
-    [WAD]                   // [WAD, x, y]
-    ARRANGE_STACK_DIVWAD()  // [x, WAD, y]
-    MUL_DIV_UP(fail)        // [result]
-}
 
 // https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L34
 #define macro EXP_WAD(fail) = takes (1) returns (1) {
@@ -425,321 +415,6 @@
     EXP_WAD(fail)               // [result]
 }
 
-////////////////////////////////////////////////////////////////
-//              LOW LEVEL FIXED POINT OPERATIONS              //
-////////////////////////////////////////////////////////////////
-
-// https://github.com/transmissions11/solmate/blob/main/src/utils/FixedPointMathLib.sol#L34
-#define macro MUL_DIV_DOWN(fail) = takes (3) returns (1) {
-    // Input stack:      [x, y, denominator]
-    dup1 dup3 mul     // [x * y, x, y, denominator]
-    dup1              // [x * y, x * y, x, y, denominator]
-    swap2 dup1        // [x, x, x * y, x * y, y, denominator]
-
-    iszero            // [x == 0, x, x * y, x * y, y, denominator]
-    swap2             // [x * y, x, x == 0, x * y, y, denominator]
-    div               // [(x * y) / x, x == 0, x * y, y, denominator]
-    dup4 eq           // [y == (x * y) / x, x == 0, x * y, y, denominator]
-    or                // [y == (x * y) / x | x == 0, x * y, y, denominator]
-    swap2 pop         // [x * y, y == (x * y) / x | x == 0, denominator]
-    swap1 dup3        // [denominator, y == (x * y) / x | x == 0, x * y, denominator]
-    iszero iszero     // [denominator != 0, y == (x * y) / x | x == 0, x * y, denominator]
-    and               // [denominator != 0 & y == (x * y) / x | x == 0, x * y, denominator]
-
-    iszero <fail> jumpi // [x * y, denominator]
-
-    div               // [(x * y) / denominator]
-    // Return stack:     [(x * y) / denominator]
-}
-
-// https://github.com/transmissions11/solmate/blob/main/src/utils/FixedPointMathLib.sol#L53
-#define macro MUL_DIV_UP(fail) = takes (3) returns (1) {
-    // Input stack:      [x, y, denominator]
-    dup1 dup3 mul     // [x * y, x, y, denominator]
-    dup1              // [x * y, x * y, x, y, denominator]
-    swap2 dup1        // [x, x, x * y, x * y, y, denominator]
-
-    iszero            // [x == 0, x, x * y, x * y, y, denominator]
-    swap2             // [x * y, x, x == 0, x * y, y, denominator]
-    div               // [(x * y) / x, x == 0, x * y, y, denominator]
-    dup4 eq           // [y == (x * y) / x, x == 0, x * y, y, denominator]
-    or                // [y == (x * y) / x | x == 0, x * y, y, denominator]
-    swap2 pop         // [x * y, y == (x * y) / x | x == 0, denominator]
-    swap1 dup3        // [denominator, y == (x * y) / x | x == 0, x * y, denominator]
-    iszero iszero     // [denominator != 0, y == (x * y) / x | x == 0, x * y, denominator]
-    and               // [denominator != 0 & y == (x * y) / x | x == 0, x * y, denominator]
-
-    iszero <fail> jumpi // [x * y, denominator]
-
-    dup1              // [x * y, x * y, denominator]
-    iszero iszero     // [x * y != 0, x * y, denominator]
-
-    dup3              // [denominator, x * y != 0, x * y, denominator]
-    0x01              // [1, denominator, x * y != 0, x * y, denominator]
-    dup4              // [x * y, 1, denominator, x * y != 0, x * y, denominator]
-    sub               // [x * y - 1, denominator, x * y != 0, x * y, denominator]
-    div               // [x * y - 1 / denominator, x * y != 0, x * y, denominator]
-    0x01              // [1, x * y - 1 / denominator, x * y != 0, x * y, denominator]
-    add               // [(x * y - 1 / denominator) + 1, x * y != 0, x * y, denominator]
-
-    mul               // [((x * y - 1 / denominator) + 1) * (x * y != 0), x * y, denominator]
-
-    // Clear extra stack items before continuing
-    swap2             // [denominator, x * y, ((x * y - 1 / denominator) + 1) * (x * y != 0)]
-    pop pop           // [((x * y - 1 / denominator) + 1) * (x * y != 0)]
-    // Return stack:     [((x * y - 1 / denominator) + 1) * (x * y != 0)]
-}
-
-// https://github.com/transmissions11/solmate/blob/main/src/utils/FixedPointMathLib.sol#L74
-// TODO: Optimize, works but not great
-#define macro RPOW(fail) = takes (3) returns (1) {
-    // Input stack:                [x, n, scalar]
-    dup1                        // [x, x, n, scalar]
-    default jumpi               // Jump to "default" if x != 0
-
-    // TODO: Fix hack- code following `finish` label pops four items off of 
-    //       the stack, so we fill it with extra items here in order to return
-    //       the scalar or 0.
-
-    dup3 dup4                   // [scalar, scalar, x, n, scalar]
-    dup4 iszero                 // [n == 0, scalar, scalar, x, n, scalar]
-    finish jumpi                // If n == 0 && x == 0, return the scalar (0 ** 0 = 1).
-
-    // 0 ** n = 0
-    0x00 dup1 finish jump       // Finish execution
-
-    default:
-        dup3                    // [scalar, x, n, scalar]
-        0x01 shr                // [scalar >> 1, x, n, scalar]
-
-        dup4                    // [result, scalar >> 1, x, n, scalar]
-        0x02                    // [2, result, scalar >> 1, x, n, scalar]
-        dup5                    // [n, 2, result, scalar >> 1, x, n, scalar]
-        mod                     // [n % 2, result, scalar >> 1, x, n, scalar]
-
-        // Set result to scalar for now if n % 2 is even
-        iszero loop jumpi       // [result, scalar >> 1, x, n, scalar]]
-
-        // Set result to x for now if n % 2 is odd
-        pop dup2                // [result, scalar >> 1, x, n, scalar]
-        loop:
-            dup4                // [n, result, scalar >> 1, x, n, scalar]
-            iszero finish jumpi // If n == 0, the loop is finished.
-
-            // Divide n by 2
-            dup4                // [n, result, scalar >> 1, x, n, scalar]
-            0x01 shr            // [n >> 1, result, scalar >> 1, x, n, scalar]
-            swap4 pop           // [result, scalar >> 1, x, n, scalar]
-
-            // Revert if x ** 2 will overflow.
-            dup3                // [x, result, scalar >> 1, x, n, scalar]
-            0x80 shr            // [x >> 128, result, scalar >> 1, x, n, scalar]
-
-            // Square x and duplicate it on the stack for use later.
-            dup4                // [x, x >> 128, result, scalar >> 1, x, n, scalar]
-            dup1 mul            // [x * x, x >> 128, result, scalar >> 1, x, n, scalar]
-            dup1                // [x * x, x * x, x >> 128, result, scalar >> 1, x, n, scalar]
-
-            // Add x ** 2 to scalar >> 1
-            dup5                // [scalar >> 1, x * x, x * x, x >> 128, result, scalar >> 1, x, n, scalar]
-            add                 // [(scalar >> 1) + (x * x), x * x, x >> 128, result, scalar >> 1, x, n, scalar]
-
-            // Revert if x ** 2 + scalar >> 1 overflowed
-            swap2               // [x >> 128, x * x, (scalar >> 1) + (x * x), result, scalar >> 1, x, n, scalar]
-            swap1               // [x * x, x >> 128, (scalar >> 1) + (x * x), result, scalar >> 1, x, n, scalar]
-            dup3 lt             // [(scalar >> 1) + (x * x) < x * x, x >> 128, (scalar >> 1) + (x * x), result, scalar >> 1, x, n, scalar]
-            or <fail> jumpi     // [(scalar >> 1) + (x * x), result, scalar >> 1, x, n, scalar]
-
-            // Set x to ((scalar >> 1) + (x * x)) / scalar
-            dup6                // [scalar, (scalar >> 1) + (x * x), result, scalar >> 1, x, n, scalar]
-            swap1               // [(scalar >> 1) + (x * x), scalar, result, scalar >> 1, x, n, scalar]
-            div                 // [((scalar >> 1) + (x * x)) / scalar, result, scalar >> 1, x, n, scalar]
-            swap3 pop           // [result, scalar >> 1, x, n, scalar]
-
-            0x02                // [2, result, scalar >> 1, x, n, scalar]
-            dup5                // [n, 2, result, scalar >> 1, x, n, scalar]
-            mod                 // [n % 2, result, scalar >> 1, x, n, scalar]
-
-            // If n is even, continue loop
-            iszero loop jumpi
-            // If n is odd, continue logic
-            
-            // Multiply x * result
-            dup1                // [result, result, scalar >> 1, x, n, scalar]
-            dup4                // [x, result, result, scalar >> 1, x, n, scalar]
-            mul                 // [x * result, result, scalar >> 1, x, n, scalar]
-            dup1                // [x * result, x * result, result, scalar >> 1, x, n, scalar]
-            dup1                // [x * result, x * result, x * result, result, scalar >> 1, x, n, scalar]
-
-            // Check if x * result overflowed
-            dup6                // [x, x * result, x * result, x * result, result, scalar >> 1, x, n, scalar]
-            swap1               // [x * result, x, x * result, x * result, result, scalar >> 1, x, n, scalar]
-            div                 // [x * result / x, x * result, x * result, result, scalar >> 1, x, n, scalar]
-            dup4                // [result, x * result / x, x * result, x * result, result, scalar >> 1, x, n, scalar]
-            eq iszero           // [result != (x * result / x), x * result, x * result, result, scalar >> 1, x, n, scalar]
-            dup6                // [x, result != (x * result / x), x * result, x * result, result, scalar >> 1, x, n, scalar]
-            iszero iszero       // [x != 0, result != (x * result / x), x * result, x * result, result, scalar >> 1, x, n, scalar]
-            and                 // [x != 0 & result != (x * result / x), x * result, x * result, result, scalar >> 1, x, n, scalar]
-            swap2               // [x * result, x * result, x != 0 & result != (x * result / x), result, scalar >> 1, x, n, scalar]
-
-            // Round to the nearest number
-            dup5                // [scalar >> 1, x * result, x * result, x != 0 & result != (x * result / x), result, scalar >> 1, x, n, scalar]
-            add                 // [(scalar >> 1) + (x * result), x * result, x != 0 & result != (x * result / x), result, scalar >> 1, x, n, scalar]
-
-            // Check if x ** 2 + scalar >> 1 overflowed
-            swap2               // [x != 0 & result != (x * result / x), x * result, (scalar >> 1) + (x * result), result, scalar >> 1, x, n, scalar]
-            swap1               // [x * result, x != 0 & result != (x * result / x), (scalar >> 1) + (x * result), result, scalar >> 1, x, n, scalar]
-            dup3 lt             // [(scalar >> 1) + (x * result) < x * result, x != 0 & result != (x * result / x), (scalar >> 1) + (x * result), result, scalar >> 1, x, n, scalar]
-            
-            // Revert if ((scalar >> 1) + (x * result)) < x * result OR x != 0 & result != (x * result / x)
-            or <fail> jumpi     // [(scalar >> 1) + (x * result), result, scalar >> 1, x, n, scalar]
-
-            // Scale rounded result
-            dup6                // [scalar, (scalar >> 1) + (x * result), result, scalar >> 1, x, n, scalar]
-            swap1               // [(scalar >> 1) + (x * result), scalar, result, scalar >> 1, x, n, scalar]
-            div                 // [(scalar >> 1) + (x * result)) / scalar, result, scalar >> 1, x, n, scalar]
-            swap1 pop           // [result, scalar >> 1, x, n, scalar]
-
-            loop jump           // Continue loop
-        // Return result
-        finish:
-            // Clean Stack
-            swap4               // [scalar, scalar >> 1, x, n, result]
-            pop pop pop pop     // [result]
-        // Return stack:           [result]
-}
-
-////////////////////////////////////////////////////////////////
-//                  GENERAL NUMBER UTILITIES                  //
-////////////////////////////////////////////////////////////////
-
-// https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L288
-#define macro SQRT() = takes (1) returns (1) {
-    // Input stack:                [x]
-
-    // We start y at x, which will help us make our initial estimate.
-    dup1                        // [y, x]
-
-    // The "correct" value is 1, but this saves a multiplication later.
-    0xb5                        // [0xb5, y, x]
-
-    0x10000000000000000000000000000000000
-    dup3                        // [y, 0x1000..., z, y, x]
-    lt                          // [y < 0x1000..., z, y, x]
-    continue_1 jumpi            // [z, y, x]
-    
-    0x40 shl                    // [z << 0x40, y, x]
-    swap1                       // [y, z << 0x40, x]
-    0x80 shr                    // [y >> 0x80, z << 0x40, x]
-    swap1                       // [z << 0x40, y >> 0x80, x]
-
-    continue_1:
-
-    0x1000000000000000000
-    dup3                        // [y, 0x1000..., z, y, x]
-    lt                          // [y < 0x1000..., z, y, x]
-    continue_2 jumpi            // [z, y, x]
-    
-    0x20 shl                    // [z << 0x20, y, x]
-    swap1                       // [y, z << 0x20, x]
-    0x40 shr                    // [y >> 0x40, z << 0x20, x]
-    swap1                       // [z << 0x20, y >> 0x40, x]
-
-    continue_2:
-
-    0x10000000000
-    dup3                        // [y, 0x1000..., z, y, x]
-    lt                          // [y < 0x1000..., z, y, x]
-    continue_3 jumpi            // [z, y, x]
-    
-    0x10 shl                    // [z << 0x10, y, x]
-    swap1                       // [y, z << 0x10, x]
-    0x20 shr                    // [y >> 0x20, z << 0x10, x]
-    swap1                       // [z << 0x10, y >> 0x20, x]
-
-    continue_3:
-
-    0x1000000
-    dup3                        // [y, 0x1000..., z, y, x]
-    lt                          // [y < 0x1000..., z, y, x]
-    continue_4 jumpi            // [z, y, x]
-    
-    0x08 shl                    // [z << 0x08, y, x]
-    swap1                       // [y, z << 0x08, x]
-    0x10 shr                    // [y >> 0x10, z << 0x08, x]
-    swap1                       // [z << 0x08, y >> 0x10, x]
-
-    continue_4:
-
-    // Goal was to get z*z*y within a small factor of x. More iterations could
-    // get y in a tighter range. Currently, we will have y in [256, 256*2^16).
-    // We ensured y >= 256 so that the relative difference between y and y+1 is small.
-    // That's not possible if x < 256 but we can just verify those cases exhaustively.
-
-    // Now, z*z*y <= x < z*z*(y+1), and y <= 2^(16+8), and either y >= 256, or x < 256.
-    // Correctness can be checked exhaustively for x < 256, so we assume y >= 256.
-    // Then z*sqrt(y) is within sqrt(257)/sqrt(256) of sqrt(x), or about 20bps.
-
-    // For s in the range [1/256, 256], the estimate f(s) = (181/1024) * (s+1) is in the range
-    // (1/2.84 * sqrt(s), 2.84 * sqrt(s)), with largest error when s = 1 and when s = 256 or 1/256.
-
-    // Since y is in [256, 256*2^16), let a = y/65536, so that a is in [1/256, 256). Then we can estimate
-    // sqrt(y) using sqrt(65536) * 181/1024 * (a + 1) = 181/4 * (y + 65536)/65536 = 181 * (y + 65536)/2^18.
-
-    // There is no overflow risk here since y < 2^136 after the first branch above.
-
-    // A mul is saved from starting z at 181.
-    swap1                       // [y, z, x]
-    0x010000 add                // [y + 0x010000, z, x]
-    mul                         // [(y + 0x010000) * z, x]
-    0x12 shr                    // [((y + 0x010000) * z) >> 0x12, x]
-
-    // Given the worst case multiplicative error of 2.84 above, 7 iterations should be enough.
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    dup1 dup3                   // [x, z, z, x]
-    div                         // [x / z, z, x]
-    add                         // [x / z + z, x]
-    0x01 shr                    // [(x / z + z) >> 0x01, x]
-
-    // If x+1 is a perfect square, the Babylonian method cycles between
-    // floor(sqrt(x)) and ceil(sqrt(x)). This statement ensures we return floor.
-    // See: https://en.wikipedia.org/wiki/Integer_square_root#Using_only_integer_division
-    // Since the ceil is rare, we save gas on the assignment and repeat division in the rare case.
-    // If you don't care whether the floor or ceil square root is returned, you can remove this statement.
-    dup1 dup1 swap3             // [x, z, z, z]
-    div                         // [x / z, z, z]
-    lt                          // [(x / z) < z, z]
-    swap1 sub                   // [z - (x / z) < z]
-}
 
 // https://github.com/transmissions11/solmate/blob/v7/src/utils/FixedPointMathLib.sol#L352
 #define macro LOG_2(fail) = takes (1) returns (1) {
@@ -796,19 +471,4 @@
     swap1 pop                   // [r]
 
     // Return stack:            // [result]
-}
-
-////////////////////////////////////////////////////////////////
-//                       HELPER MACROS                        //
-////////////////////////////////////////////////////////////////
-
-#define macro ARRANGE_STACK_MULWAD() = takes (3) returns (3) {
-    // Input stack: [WAD, x, y]
-    swap2        // [y, x, WAD]
-    swap1        // [x, y, WAD]
-}
-
-#define macro ARRANGE_STACK_DIVWAD() = takes (3) returns (3) {
-    // Input stack: [WAD, x, y]
-    swap1        // [x, WAD, y]
 }
