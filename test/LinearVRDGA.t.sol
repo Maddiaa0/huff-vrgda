@@ -6,6 +6,7 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {toWadUnsafe, toDaysWadUnsafe, fromDaysWadUnsafe} from "../src/utils/SignedWadMath.sol";
 
 import {MockLinearVRGDA} from "./mocks/MockLinearVRGDA.sol";
+import "foundry-huff/HuffDeployer.sol";
 
 uint256 constant ONE_THOUSAND_YEARS = 356 days * 1000;
 
@@ -15,11 +16,14 @@ contract LinearVRGDATest is DSTestPlus {
     MockLinearVRGDA vrgda;
 
     function setUp() public {
-        vrgda = new MockLinearVRGDA(
-            69.42e18, // Target price.
-            0.31e18, // Price decay percent.
-            2e18 // Per time unit.
-        );
+
+        int256 targetPrice = 69.42e18;
+        int256 priceDecayPercent = 0.31e18;
+        int256 perTimeUnit = 2e18;
+
+
+        vrgda = MockLinearVRGDA(HuffDeployer.deploy("LinearVRGDA"))
+
     }
 
     function testTargetPrice() public {
