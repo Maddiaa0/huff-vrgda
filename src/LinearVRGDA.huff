@@ -1,16 +1,19 @@
 #include "./utils/signedWadMath.huff"
 
-#define function getTargetSaleTime(int256) public view returns (int256)
-#define function getVRGDAPrice(int256, uint256) public view returns (uint256)
+#define function getTargetSaleTime(int256) view returns (int256)
+#define function getVRGDAPrice(int256, uint256) view returns (uint256)
+#define function targetPrice() view returns(int256)
+#define function decayConstant() view returns(int256)
+#define function perTimeUnit() view returns(int256)
 
 
 // these will be overriden with the constructor flag
 // The constructor logic will need to be copied within deploy scripts 
 // in order to inline the correct constants 
-#define constant TARGET_PRICE = 0x00;       // ( int256 )
-#define constant DECAY_CONSTANT = 0x00; // ( uint256 )
+#define constant TARGET_PRICE = 0x00       // ( int256 )
+#define constant DECAY_CONSTANT = 0x00 // ( uint256 )
 // Also will need to do this within the deploy script constructor
-#define constant PER_TIME_UNIT = 0x00;
+#define constant PER_TIME_UNIT = 0x00
 
 
 // (int256 _targetPrice, int256 _priceDecayPercent)
@@ -30,16 +33,17 @@
 
     [DECAY_CONSTANT]         // [decayConst, timeSinceStart - wad(1 + sold))]
     UNSAFE_WAD_MUL()        
-    WAD_EXP()
+    EXP_WAD(fail)
 
     [TARGET_PRICE]
     WAD_MUL()
 
-    0x00 dup1 mstore
-    0x00 0x20 return
+    0x00 mstore
+    0x20 0x00 return
+
+    fail: 
+        0x00 dup1 revert
 }
-
-
 
 #define macro GET_TARGET_SALE_TIME() = takes(1) returns(0) {
     // init state = [sold]
@@ -48,13 +52,49 @@
     UNSAFE_WAD_DIV()
 }
 
-
-// Public view function
 #define macro GET_TARGET_SALE_TIME_EXTERNAL() = {
-    0x04 calldata
-    GET_TARGET_SALE_TIME()
-    
-    
-    0x00 dup1 mstore
-    0x00 0x20 return
+    0x04 calldataload           // [sold]
+    GET_TARGET_SALE_TIME()      // [targetSaleTime]
+    __RETURN_STACK_ITEM_ONE()   // *return targetSaleTime
+}
+
+
+/** Return Consant
+ * @notice Returns a constant provided as an arg
+ * @param _constant The constant to return
+ */
+#define macro RETURN_CONSTANT(constant) = takes(1) returns(0) {
+    <constant> __RETURN_STACK_ITEM_ONE()
+}
+
+/** Return Stack Item One
+ * @notice Returns the item currently at the top of the stack
+ * @dev 32 bytes only  
+ */
+#define macro __RETURN_STACK_ITEM_ONE() = takes(1) returns(0) {
+    0x00 mstore
+    0x20 0x00 return
+}
+
+
+#define macro MAIN() = {
+    0x00 calldataload 0xE0 shr
+    dup1 __FUNC_SIG(getVRGDAPrice) eq getVRGDAPrice jumpi
+    dup1 __FUNC_SIG(getTargetSaleTime) eq getTargetSaleTime jumpi
+    dup1 __FUNC_SIG(targetPrice) eq targetPrice jumpi
+    dup1 __FUNC_SIG(decayConstant) eq decayConstant jumpi
+    dup1 __FUNC_SIG(perTimeUnit) eq perTimeUnit jumpi
+
+    0x00 dup1 revert
+
+    getVRGDAPrice:
+        GET_VRGDA_PRICE()
+    getTargetSaleTime:
+        GET_TARGET_SALE_TIME_EXTERNAL()
+    targetPrice:
+        RETURN_CONSTANT(TARGET_PRICE)
+    decayConstant:
+        RETURN_CONSTANT(DECAY_CONSTANT)
+    perTimeUnit:
+        RETURN_CONSTANT(PER_TIME_UNIT)    
 }
