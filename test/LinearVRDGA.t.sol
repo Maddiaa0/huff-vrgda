@@ -5,8 +5,12 @@ import "forge-std/Test.sol";
 import { 
     wadLn, 
     toWadUnsafe, 
-    fromDaysWadUnsafe
+    fromDaysWadUnsafe,
+    toDaysWadUnsafe
 } from "./utils/SignedWadMath.sol";
+
+import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+
 
 import "foundry-huff/HuffDeployer.sol";
 
@@ -25,7 +29,7 @@ interface MockLinearVRGDA {
     function getVRGDAPrice(int256 timeSinceStart, uint256 sold) external view returns (uint256);
 }
 
-contract LinearVRGDATest is Test {
+contract LinearVRGDATest is DSTestPlus {
     MockLinearVRGDA vrgda;
 
     // Required to sanity check huff deployer
@@ -46,9 +50,9 @@ contract LinearVRGDATest is Test {
         // Overwrite inlined constants using the huff compiler - essentially equivalent to an immutable
         vrgda = MockLinearVRGDA(HuffDeployer
             .config()
-            .with_int_constant("TARGET_PRICE", targetPrice)
-            .with_int_constant("DECAY_CONSTANT", decayConstant)
-            .with_int_constant("PER_TIME_UNIT", perTimeUnit)
+            .with_bytes32_constant("TARGET_PRICE", bytes32(abi.encodePacked(targetPrice)))
+            .with_bytes32_constant("DECAY_CONSTANT", bytes32(abi.encodePacked(decayConstant)))
+            .with_bytes32_constant("PER_TIME_UNIT", bytes32(abi.encodePacked(perTimeUnit)))
             .deploy("LinearVRGDA")
         );
     }
@@ -62,30 +66,30 @@ contract LinearVRGDATest is Test {
 
     function testTargetPrice() public {
         // Warp to the target sale time so that the VRGDA price equals the target price.
-        warp(block.timestamp + fromDaysWadUnsafe(vrgda.getTargetSaleTime(1e18)));
+        hevm.warp(block.timestamp + fromDaysWadUnsafe(vrgda.getTargetSaleTime(1e18)));
 
         uint256 cost = vrgda.getVRGDAPrice(toDaysWadUnsafe(block.timestamp), 0);
         assertRelApproxEq(cost, uint256(vrgda.targetPrice()), 0.00001e18);
     }
 
-    // function testPricingBasic() public {
-    //     // Our VRGDA targets this number of mints at given time.
-    //     uint256 timeDelta = 120 days;
-    //     uint256 numMint = 239;
+    function testPricingBasic() public {
+        // Our VRGDA targets this number of mints at given time.
+        uint256 timeDelta = 120 days;
+        uint256 numMint = 239;
 
-    //     hevm.warp(block.timestamp + timeDelta);
+        hevm.warp(block.timestamp + timeDelta);
 
-    //     uint256 cost = vrgda.getVRGDAPrice(toDaysWadUnsafe(block.timestamp), numMint);
-    //     assertRelApproxEq(cost, uint256(vrgda.targetPrice()), 0.00001e18);
-    // }
+        uint256 cost = vrgda.getVRGDAPrice(toDaysWadUnsafe(block.timestamp), numMint);
+        assertRelApproxEq(cost, uint256(vrgda.targetPrice()), 0.00001e18);
+    }
 
-    // function testAlwaysTargetPriceInRightConditions(uint256 sold) public {
-    //     sold = bound(sold, 0, type(uint128).max);
+    function testAlwaysTargetPriceInRightConditions(uint256 sold) public {
+        sold = bound(sold, 0, type(uint128).max);
 
-    //     assertRelApproxEq(
-    //         vrgda.getVRGDAPrice(vrgda.getTargetSaleTime(toWadUnsafe(sold + 1)), sold),
-    //         uint256(vrgda.targetPrice()),
-    //         0.00001e18
-    //     );
-    // }
+        assertRelApproxEq(
+            vrgda.getVRGDAPrice(vrgda.getTargetSaleTime(toWadUnsafe(sold + 1)), sold),
+            uint256(vrgda.targetPrice()),
+            0.00001e18
+        );
+    }
 }

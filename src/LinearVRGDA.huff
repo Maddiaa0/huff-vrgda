@@ -45,11 +45,18 @@
         0x00 dup1 revert
 }
 
+#define macro GET_VRGDA_PRICE_EXTERNAL() = {
+    0x24 calldataload       // [sold]
+    0x04 calldataload       // [timesinceStart, sold]
+    
+    GET_VRGDA_PRICE()       // returns inside
+}
+
 #define macro GET_TARGET_SALE_TIME() = takes(1) returns(0) {
     // init state = [sold]
-    [PER_TIME_UNIT] 
-    swap1
-    UNSAFE_WAD_DIV()
+    [PER_TIME_UNIT]             // [perTimeUnit, sold]
+    swap1                       // [sold, perTimeUnit]
+    UNSAFE_WAD_DIV()            // [sold / perTimeUnit] (targetSaleTime)
 }
 
 #define macro GET_TARGET_SALE_TIME_EXTERNAL() = {
@@ -88,7 +95,7 @@
     0x00 dup1 revert
 
     getVRGDAPrice:
-        GET_VRGDA_PRICE()
+        GET_VRGDA_PRICE_EXTERNAL()
     getTargetSaleTime:
         GET_TARGET_SALE_TIME_EXTERNAL()
     targetPrice:
