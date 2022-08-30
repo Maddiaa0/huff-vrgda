@@ -41,7 +41,7 @@
 }
 
 // wadMul(int256 x, int256 y) pure returns (int256)
-#define macro WAD_MUL() = takes(2) returns(1) {
+#define macro WAD_MUL(fail) = takes(2) returns(1) {
                       // [x,y]
     
     dup2 dup2         // [x,y,x,y]
@@ -57,17 +57,9 @@
     iszero            // [iszero(0), y==(r/x),r,x,y]
     or                // [iszero(0) || y==(r/x) ,r,x,y]
     iszero            // [iszero(iszero(0) || y==(r/x)),r,x,y]
-    error jumpi
-    continue jump
+    <fail> jumpi
 
-
-    // TODO: pass this one in as a param so that we dont have to use another jump
-    error:
-        0x00 dup1 revert
-
-    continue:
     // [r,x,y]
-
     // Make sure the stack ordering is correct here    
     [WAD]
     swap1
@@ -83,13 +75,16 @@
 #define test TEST_WAD_MUL() = {
     0xDE0B6B3A7640000       // [y (1e18)]
     0x1BC16D674EC80000      // [x (2e18),y ]
-    WAD_MUL()               // result
+    WAD_MUL(fail)               // result
 
     0x1BC16D674EC80000
     // eq ASSERT()
+
+    fail:
+        0x00 dup1 revert
 }
 
-#define macro WAD_DIV() = takes(2) returns(1) {
+#define macro WAD_DIV(fail) = takes(2) returns(1) {
                         // [x,y]
     dup1                // [x,x,y]
     [WAD] dup1          // [w,w,x,x,y]
@@ -109,15 +104,7 @@
     iszero              // [!iszero(y) && x==(r/w),r,x,y]
     and                 // [iszero(y) && x==(r/w),r,x,y]
     iszero              // [iszero(iszero(y) && x==(r/w)),r,x,y]
-    error jumpi
-    // TODO: refactor this out
-    continue jump
-
-
-    error:
-        0x00 dup1 revert
-
-    continue:
+    <fail> jumpi
 
     // TRIPLE CHECK ACCOUNTING
     // [r,x,y]
@@ -130,10 +117,13 @@
 #define test TEST_WAD_MUL() = {
     0xDE0B6B3A7640000       // [y (1e18)]
     0x1BC16D674EC80000      // [x (2e18),y]
-    WAD_MUL()               // result
+    WAD_MUL(fail)               // result
 
     0xDE0B6B3A7640000
     // eq ASSERT()
+
+    fail: 
+        0x00 dup1 revert
 }
 
 

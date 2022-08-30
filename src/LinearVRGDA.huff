@@ -7,18 +7,15 @@
 #define function perTimeUnit() view returns(int256)
 
 
-// these will be overriden with the constructor flag
+// These will be overriden with the constructor flag
 // The constructor logic will need to be copied within deploy scripts 
 // in order to inline the correct constants 
-#define constant TARGET_PRICE = 0x00       // ( int256 )
-#define constant DECAY_CONSTANT = 0x00 // ( uint256 )
-// Also will need to do this within the deploy script constructor
-#define constant PER_TIME_UNIT = 0x00
+#define constant TARGET_PRICE = 0x00        // ( int256 )
+#define constant DECAY_CONSTANT = 0x00      // ( int256 )
+#define constant PER_TIME_UNIT = 0x00       // ( int256 )
 
 
-// (int256 _targetPrice, int256 _priceDecayPercent)
-// does the flag to override these exist?
-#define macro GET_VRGDA_PRICE() = takes(2) returns(1) {
+#define macro GET_VRGDA_PRICE(fail) = takes(2) returns(1) {
     // Inputs : [timeSinceStart, Sold]
 
     // toWadUnsafe(sold +1)
@@ -36,20 +33,15 @@
     EXP_WAD(fail)
 
     [TARGET_PRICE]
-    WAD_MUL()
-
-    0x00 mstore
-    0x20 0x00 return
-
-    fail: 
-        0x00 dup1 revert
+    WAD_MUL(fail)
 }
 
-#define macro GET_VRGDA_PRICE_EXTERNAL() = {
+#define macro GET_VRGDA_PRICE_EXTERNAL(fail) = {
     0x24 calldataload       // [sold]
     0x04 calldataload       // [timesinceStart, sold]
     
-    GET_VRGDA_PRICE()       // returns inside
+    GET_VRGDA_PRICE(fail)       // [price]
+    __RETURN_STACK_ITEM_ONE()
 }
 
 #define macro GET_TARGET_SALE_TIME() = takes(1) returns(0) {
@@ -92,10 +84,11 @@
     dup1 __FUNC_SIG(decayConstant) eq decayConstant jumpi
     dup1 __FUNC_SIG(perTimeUnit) eq perTimeUnit jumpi
 
-    0x00 dup1 revert
+    fail:
+        0x00 dup1 revert
 
     getVRGDAPrice:
-        GET_VRGDA_PRICE_EXTERNAL()
+        GET_VRGDA_PRICE_EXTERNAL(fail)
     getTargetSaleTime:
         GET_TARGET_SALE_TIME_EXTERNAL()
     targetPrice:

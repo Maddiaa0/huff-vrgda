@@ -15,7 +15,6 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import "foundry-huff/HuffDeployer.sol";
 
 uint256 constant ONE_THOUSAND_YEARS = 356 days * 1000;
-
 uint256 constant MAX_SELLABLE = 6392;
 
 interface MockLinearVRGDA {
