@@ -13,7 +13,6 @@
     [WAD] mul
 } 
 
-
 #define macro toDaysWadUnsafe() = takes(1) returns(1) {
     [WAD] mul [DAY] div
 }
@@ -60,29 +59,14 @@
     <fail> jumpi
 
     // [r,x,y]
-    // Make sure the stack ordering is correct here    
     [WAD]
     swap1
     sdiv            // [r,x,y]
 
     // clean stack
     swap2 pop pop   // [r]      
-
-    
 }
 
-// test wad mul for positive numbers
-#define test TEST_WAD_MUL() = {
-    0xDE0B6B3A7640000       // [y (1e18)]
-    0x1BC16D674EC80000      // [x (2e18),y ]
-    WAD_MUL(fail)               // result
-
-    0x1BC16D674EC80000
-    // eq ASSERT()
-
-    fail:
-        0x00 dup1 revert
-}
 
 #define macro WAD_DIV(fail) = takes(2) returns(1) {
                         // [x,y]
@@ -106,24 +90,10 @@
     iszero              // [iszero(iszero(y) && x==(r/w)),r,x,y]
     <fail> jumpi
 
-    // TRIPLE CHECK ACCOUNTING
     // [r,x,y]
     swap1             // [x,r,y]
     pop               // [r,y]
     sdiv              // [r/y]
-}
-
-// test wad mul for positive numbers
-#define test TEST_WAD_MUL() = {
-    0xDE0B6B3A7640000       // [y (1e18)]
-    0x1BC16D674EC80000      // [x (2e18),y]
-    WAD_MUL(fail)               // result
-
-    0xDE0B6B3A7640000
-    // eq ASSERT()
-
-    fail: 
-        0x00 dup1 revert
 }
 
 

@@ -1,0 +1,13 @@
+#define macro ASSERT_EQ() = {
+    eq ASSERT()
+}
+
+#define macro ASSERT() = {
+    continue jumpi
+    FAIL()
+    continue:
+}
+
+#define macro FAIL() = {
+    0x00 dup1 revert
+}

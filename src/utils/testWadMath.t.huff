@@ -1,0 +1,61 @@
+#include "./testHelpers.huff"
+#include "./signedWadMath.huff"
+
+// test wad mul for positive numbers
+#define test TEST_WAD_DIV() = {
+    0xDE0B6B3A7640000       // [y (1e18)]
+    0x1BC16D674EC80000      // [x (2e18),y]
+    WAD_MUL(fail)               // result
+    0x1BC16D674EC80000
+    ASSERT_EQ()
+    continue jump
+
+    fail: 
+        FAIL()
+    continue:
+}
+
+// test wad mul for positive numbers
+#define test TEST_WAD_MUL() = {
+    0x0DE0B6B3A7640000          // [y (1e18)]
+    0x1BC16D674EC80000          // [x (2e18), y]
+    WAD_MUL(fail)               // result
+
+    0x1BC16D674EC80000
+    ASSERT_EQ()
+    continue jump
+    // catch  jump label
+    fail: 
+        FAIL()
+    continue:
+}
+
+#define test FAIL_WAD_MUL() = {
+    0xF0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+    0x20
+    WAD_MUL(fail)
+    FAIL()
+
+    // succeed if fails
+    fail: 
+}
+
+#define test FAIL_WAD_DIV() = {
+    0x00
+    0x0DE0B6B3A7640000
+    WAD_DIV(fail)
+    FAIL()
+
+    // succeed if fails
+    fail: 
+}
+
+
+#define test TEST_TO_WAD_UNSAFE() =  {
+    // Test 0x2 * WAD = 2e18
+    0x2 
+    TO_WAD_UNSAFE() 
+    0x1BC16D674EC80000              // [2*e18]
+    ASSERT_EQ()
+}
+

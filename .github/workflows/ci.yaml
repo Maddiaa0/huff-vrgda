@@ -25,6 +25,9 @@ jobs:
       - name: Run Tests
         run: forge test -vvv
 
+      - name: Huff Tests
+        run: bash hufftest.sh
+
   scripts:
     strategy:
       fail-fast: true

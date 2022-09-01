@@ -1,9 +1,6 @@
 #include "../utils/returnUtils.huff"
-
-/// @dev Importing in this order will flatten our logisitc vrgda infront of the vrgda file
-///      effectively performing inheritance 
-#include "../LinearVRGDA.huff"
 #include "../VRGDA.huff"
+#include "../LinearVRGDA.huff"
 
 #define function getTargetSaleTime(int256) view returns (int256)
 #define function getVRGDAPrice(int256, uint256) view returns (uint256)
