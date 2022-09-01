@@ -1,9 +1,11 @@
 <img align="right" width="150" height="150" top="100" src="./assets/blueprint.png">
 
-# huff-project-template • [![ci](https://github.com/huff-language/huff-project-template/actions/workflows/ci.yaml/badge.svg)](https://github.com/huff-language/huff-project-template/actions/workflows/ci.yaml) ![license](https://img.shields.io/github/license/huff-language/huff-project-template.svg) ![solidity](https://img.shields.io/badge/solidity-^0.8.15-lightgrey)
+# huff-VRGDA • [![ci](https://github.com/huff-language/huff-project-template/actions/workflows/ci.yaml/badge.svg)](https://github.com/huff-language/huff-project-template/actions/workflows/ci.yaml) ![license](https://img.shields.io/github/license/huff-language/huff-project-template.svg) ![solidity](https://img.shields.io/badge/solidity-^0.8.15-lightgrey)
 
+Note this codebase is experimental and is not ready to be used in production, it is meant as a learning resource.
+
+Generated with:
 Versatile Huff Project Template using Foundry.
-
 
 ## Getting Started
 
@@ -11,14 +13,14 @@ Versatile Huff Project Template using Foundry.
 
 The following will need to be installed in order to use this template. Please follow the links and instructions.
 
--   [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)  
-    -   You'll know you've done it right if you can run `git --version`
--   [Foundry / Foundryup](https://github.com/gakonst/foundry)
-    -   This will install `forge`, `cast`, and `anvil`
-    -   You can test you've installed them right by running `forge --version` and get an output like: `forge 0.2.0 (f016135 2022-07-04T00:15:02.930499Z)`
-    -   To get the latest of each, just run `foundryup`
--   [Huff Compiler](https://docs.huff.sh/get-started/installing/)
-    -   You'll know you've done it right if you can run `huffc --version` and get an output like: `huffc 0.2.0`
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+  - You'll know you've done it right if you can run `git --version`
+- [Foundry / Foundryup](https://github.com/gakonst/foundry)
+  - This will install `forge`, `cast`, and `anvil`
+  - You can test you've installed them right by running `forge --version` and get an output like: `forge 0.2.0 (f016135 2022-07-04T00:15:02.930499Z)`
+  - To get the latest of each, just run `foundryup`
+- [Huff Compiler](https://docs.huff.sh/get-started/installing/)
+  - You'll know you've done it right if you can run `huffc --version` and get an output like: `huffc 0.2.0`
 
 ### Quickstart
 
@@ -52,32 +54,39 @@ forge test
 
 For more information on how to use Foundry, check out the [Foundry Github Repository](https://github.com/foundry-rs/foundry/tree/master/forge) and the [foundry-huff library repository](https://github.com/huff-language/foundry-huff).
 
-
 ## Blueprint
 
 ```ml
 lib
 ├─ forge-std — https://github.com/foundry-rs/forge-std
 ├─ foundry-huff — https://github.com/huff-language/foundry-huff
-scripts
-├─ Deploy.s.sol — Deployment Script
+├─ solmate - https://github.com/transmissions11/solmate
 src
-├─ SimpleStore — A Simple Storage Contract in Huff
-test
-└─ SimpleStore.t — SimpleStoreTests
-```
+├─ utils
+|   ├─ signedWadMath.huff - An extension of https://github.com/pentagonxyz/huffmate/blob/main/src/math/FixedPointMath.huff
+|   ├─ testHelpers.huff - A collection of helpers for writing huff tests
+|   ├─ testWadMath.t.huff - Huff tests for signedWadMath huff methods
+|   └─ returnUtils.huff - Utils for wrapper contracts
+├─ wrappers
+|   ├─ LinearVRGDAWrapper.huff - A testing wrapper for linear VRGDAs
+|   └─ LogisticVRGDAWrapper.huff - A testing wrapper for linear VRGDAs
+├─ LinearVRGDA.huff - A linear VRGDA implementation
+├─ LogisticVRGDA.huff - A logistic VRGDA implementation
+└─ VRGDA.huff - A VRGDA implementation
 
+```
 
 ## License
 
 [The Unlicense](https://github.com/huff-language/huff-project-template/blob/master/LICENSE)
 
-
 ## Acknowledgements
 
 - [forge-template](https://github.com/foundry-rs/forge-template)
 - [femplate](https://github.com/abigger87/femplate)
-
+- [huffmate](https://github.com/pentagonxyz/huffmate)
+- [VRGDAs](https://github.com/transmissions11/VRGDAs)
+- [huff-rs](https://github.com/huff-language/huff-rs)
 
 ## Disclaimer
 
