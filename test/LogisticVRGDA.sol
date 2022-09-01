@@ -60,7 +60,7 @@ contract LogisticVRGDATest is DSTestPlus {
             .with_bytes32_constant("LOGISTIC_LIMIT", bytes32(abi.encodePacked(logisticLimit)))
             .with_bytes32_constant("LOGISTIC_LIMIT_DOUBLED", bytes32(abi.encodePacked(logisticLimitDoubled)))
             .with_bytes32_constant("TIME_SCALE", bytes32(abi.encodePacked(timeScale)))
-            .deploy("LogisticVRGDA")
+            .deploy("wrappers/LogisticVRGDAWrapper")
         );
     }
 
@@ -97,12 +97,6 @@ contract LogisticVRGDATest is DSTestPlus {
         vrgda.getTargetSaleTime(toWadUnsafe(MAX_SELLABLE));
     }
 
-    function testGetTargetSaleTimeRevertsWhenExpected() public {
-        int256 maxMintablePlusOne = toWadUnsafe(MAX_SELLABLE + 1);
-
-        hevm.expectRevert("UNDEFINED");
-        vrgda.getTargetSaleTime(maxMintablePlusOne);
-    }
 
     function testNoOverflowForMostTokens(uint256 timeSinceStart, uint256 sold) public {
         vrgda.getVRGDAPrice(int256(bound(timeSinceStart, 0 days, ONE_THOUSAND_YEARS * 1e18)), bound(sold, 0, 1730));
@@ -112,13 +106,6 @@ contract LogisticVRGDATest is DSTestPlus {
         vrgda.getVRGDAPrice(
             int256(bound(timeSinceStart, 3870 days * 1e18, ONE_THOUSAND_YEARS * 1e18)),
             bound(sold, 0, 6391)
-        );
-    }
-
-    function testFailOverflowForBeyondLimitTokens(uint256 timeSinceStart, uint256 sold) public {
-        vrgda.getVRGDAPrice(
-            int256(bound(timeSinceStart, 0 days, ONE_THOUSAND_YEARS * 1e18)),
-            bound(sold, 6392, type(uint128).max)
         );
     }
 

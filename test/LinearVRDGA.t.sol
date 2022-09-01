@@ -52,7 +52,7 @@ contract LinearVRGDATest is DSTestPlus {
             .with_bytes32_constant("TARGET_PRICE", bytes32(abi.encodePacked(targetPrice)))
             .with_bytes32_constant("DECAY_CONSTANT", bytes32(abi.encodePacked(decayConstant)))
             .with_bytes32_constant("PER_TIME_UNIT", bytes32(abi.encodePacked(perTimeUnit)))
-            .deploy("LinearVRGDA")
+            .deploy("wrappers/LinearVRGDAWrapper")
         );
     }
 

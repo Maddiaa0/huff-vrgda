@@ -1,64 +1,24 @@
+/// @title Logistic Variable Rate Gradual Dutch Auction
+/// @author transmissions11 <t11s@paradigm.xyz>
+/// @author FrankieIsLost <frankie@paradigm.xyz>
+/// @author Maddiaa <https://github.com/cheethas>
+/// @notice VRGDA with a logistic issuance curve.
+
 #include "./utils/signedWadMath.huff"
-
-#define function getTargetSaleTime(int256) view returns (int256)
-#define function getVRGDAPrice(int256, uint256) view returns (uint256)
-#define function targetPrice() view returns(int256)
-#define function decayConstant() view returns(int256)
-#define function timeScale() view returns(int256)
-#define function logisticLimit() view returns(int256)
-#define function logisticLimitDoubled() view returns(int256)
-
-// These will be overriden with the constructor flag
-// The constructor logic will need to be copied within deploy scripts 
-// in order to inline the correct constants 
-#define constant TARGET_PRICE = 0x00            // ( int256 )
-#define constant DECAY_CONSTANT = 0x00          // ( int256 )
 
 #define constant LOGISTIC_LIMIT = 0x00          // ( int256 )
 #define constant LOGISTIC_LIMIT_DOUBLED = 0x00  // ( int256 )
 #define constant TIME_SCALE = 0x00              // ( int256 )
 
-// (int256 _targetPrice, int256 _priceDecayPercent)
-// does the flag to override these exist?
-#define macro GET_VRGDA_PRICE(fail) = takes(2) returns(1) {
-    // Inputs : [timeSinceStart, Sold]
-
-    // toWadUnsafe(sold +1)
-    swap1                   // [sold, timeSinceStart]
-    0x01                    // [1, sold, timeSinceStart]
-    add                     // [1 + sold, timeSinceStart]
-    TO_WAD_UNSAFE()         // [wad(1 + sold), timeSinceStart]
-    GET_TARGET_SALE_TIME(fail)  // TODO: UPDATE STACK AFTER ADDING THIS
-
-    swap1                   // (timeSinceStart, wad(1 + sold))
-    sub                     // (timeSinceStart - wad(1 + sold), wad(1 + sold))
-
-    [DECAY_CONSTANT]         // [decayConst, timeSinceStart - wad(1 + sold))]
-    UNSAFE_WAD_MUL()        
-    EXP_WAD(fail)
-
-    [TARGET_PRICE]
-    WAD_MUL(fail)
-}
-
-#define macro GET_VRGDA_PRICE_EXTERNAL(fail) = {
-    0x24 calldataload       // [sold]
-    0x04 calldataload       // [timesinceStart, sold]
-    
-    // Either returns or bubbles up error
-    GET_VRGDA_PRICE(fail)   // [price]
-    __RETURN_STACK_ITEM_ONE()
-}
-
+/// @dev Given a number of tokens sold, return the target time that number of tokens should be sold by.
+/// @param {Stack} sold A number of tokens sold, scaled by 1e18, to get the corresponding target sale time for.
+/// @return The target time the tokens should be sold by, scaled by 1e18, where the time is
+/// relative, such that 0 means the tokens should be sold immediately when the VRGDA begins.
 #define macro GET_TARGET_SALE_TIME(fail) = takes(1) returns(0) {
     // init state = [sold]
     [TIME_SCALE]                // [timeScale, sold]
     swap1                       // [sold, perTimeUnit]
-    
-    // -unsafeWadDiv(wadLn(unsafeDiv(logisticLimitDoubled, sold + logisticLimit) - 1e18), timeScale);
-    
-    // unsafeDiv(logisticLimitDoubled, sold + logisticLimit)
-
+        
     [WAD]                       // [1e18, sold, timescale]
     swap1                       // [sold, 1e18, timescale]
     [LOGISTIC_LIMIT]            // [logisticLimit, sold, 1e18, timeScale]
@@ -70,59 +30,4 @@
     LN_WAD(fail)                // [wadLn((logisticLimitDoubled / (sold + logisticLimit)) - 1e18), timeScale]
     UNSAFE_WAD_DIV()            // [wadLn((logisticLimitDoubled / (sold + logisticLimit)) - 1e18) / timeScale]
     0x00 sub                    // [-wadLn((logisticLimitDoubled / (sold + logisticLimit)) - 1e18) / timeScale]
-    // ding ding    
 }
-
-#define macro GET_TARGET_SALE_TIME_EXTERNAL(fail) = {
-    0x04 calldataload           // [sold]
-    GET_TARGET_SALE_TIME(fail)      // [targetSaleTime]
-    __RETURN_STACK_ITEM_ONE()   // *return targetSaleTime
-}
-
-
-/** Return Consant
- * @notice Returns a constant provided as an arg
- * @param _constant The constant to return
- */
-#define macro RETURN_CONSTANT(constant) = {
-    <constant> __RETURN_STACK_ITEM_ONE()
-}
-
-/** Return Stack Item One
- * @notice Returns the item currently at the top of the stack
- * @dev 32 bytes only  
- */
-#define macro __RETURN_STACK_ITEM_ONE() = takes(1) returns(0) {
-    0x00 mstore
-    0x20 0x00 return
-}
-
-
-#define macro MAIN() = {
-    0x00 calldataload 0xE0 shr
-    dup1 __FUNC_SIG(getVRGDAPrice) eq getVRGDAPrice jumpi
-    dup1 __FUNC_SIG(getTargetSaleTime) eq getTargetSaleTime jumpi
-    dup1 __FUNC_SIG(targetPrice) eq targetPrice jumpi
-    dup1 __FUNC_SIG(decayConstant) eq decayConstant jumpi
-    dup1 __FUNC_SIG(timeScale) eq timeScale jumpi
-    dup1 __FUNC_SIG(logisticLimit) eq logisticLimit jumpi
-    dup1 __FUNC_SIG(logisticLimitDoubled) eq logisticLimitDoubled jumpi
-
-    fail:
-        0x00 dup1 revert
-
-    getVRGDAPrice:
-        GET_VRGDA_PRICE_EXTERNAL(fail)
-    getTargetSaleTime:
-        GET_TARGET_SALE_TIME_EXTERNAL(fail)
-    targetPrice:
-        RETURN_CONSTANT(TARGET_PRICE)
-    decayConstant:
-        RETURN_CONSTANT(DECAY_CONSTANT)
-    timeScale:
-        RETURN_CONSTANT(TIME_SCALE)
-    logisticLimit:
-        RETURN_CONSTANT(LOGISTIC_LIMIT)
-    logisticLimitDoubled:
-        RETURN_CONSTANT(LOGISTIC_LIMIT_DOUBLED)
-}       

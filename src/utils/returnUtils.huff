@@ -1,0 +1,37 @@
+
+/** Return Consant
+ * @notice Returns a constant provided as an arg
+ * @param _constant The constant to return
+ */
+#define macro RETURN_CONSTANT(constant) = takes(1) returns(0) {
+    <constant> __RETURN_STACK_ITEM_ONE()
+}
+
+/** Return Stack Item One
+ * @notice Returns the item currently at the top of the stack
+ * @dev 32 bytes only  
+ */
+#define macro __RETURN_STACK_ITEM_ONE() = takes(1) returns(0) {
+    0x00 mstore
+    0x20 0x00 return
+}
+
+/** Get VRGDA Price External
+ * @notice External wrapper to return the current vrgda price
+ */
+#define macro GET_VRGDA_PRICE_EXTERNAL(fail) = {
+    0x24 calldataload       // [sold]
+    0x04 calldataload       // [timesinceStart, sold]
+    
+    GET_VRGDA_PRICE(fail)       // [price]
+    __RETURN_STACK_ITEM_ONE()
+}
+
+/** Get Target Sale Time External
+ * @notice External wrapper to return the target sale time
+ */
+#define macro GET_TARGET_SALE_TIME_EXTERNAL(fail) = {
+    0x04 calldataload           // [sold]
+    GET_TARGET_SALE_TIME(fail)      // [targetSaleTime]
+    __RETURN_STACK_ITEM_ONE()   // *return targetSaleTime
+}

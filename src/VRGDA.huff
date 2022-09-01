@@ -1,41 +1,37 @@
+/// @title Variable Rate Gradual Dutch Auction
+/// @author transmissions11 <t11s@paradigm.xyz>
+/// @author FrankieIsLost <frankie@paradigm.xyz>
+/// @author Maddiaa <https://github.com/cheethas>
+/// @notice Sell tokens roughly according to an issuance schedule.
+
 #include "./utils/signedWadMath.huff"
 
-
-#define function getTargetSaleTime(int256) public view returns (int256)
-#define function getVRGDAPrice(int256, uint256) public view returns (uint256)
-
-
-// these will be overriden with the constructor flag
+// These will be overriden with the constructor flag
 // The constructor logic will need to be copied within deploy scripts 
 // in order to inline the correct constants 
-#define constant TARGET_PRICE = 0x00;       // ( int256 )
-#define constant DECAY_CONSTANT = 0x00; // ( uint256 )
+#define constant TARGET_PRICE = 0x00            // ( int256 )
+#define constant DECAY_CONSTANT = 0x00          // ( int256 )
 
-// (int256 _targetPrice, int256 _priceDecayPercent)
-// does the flag to override these exist?
-
-
-#define macro GET_VRGDA_PRICE() = takes(2) returns(1) {
+/// @notice Calculate the price of a token according to the VRGDA formula.
+/// @param {Stack} timeSinceStart Time passed since the VRGDA began, scaled by 1e18.
+/// @param {Stack} sold The total number of tokens that have been sold so far.
+/// @return The price of a token according to VRGDA, scaled by 1e18.
+#define macro GET_VRGDA_PRICE(fail) = takes(2) returns(1) {
     // Inputs : [timeSinceStart, Sold]
 
-    // toWadUnsafe(sold +1)
-    swap1                   // [sold, timeSinceStart]
-    0x01                    // [1, sold, timeSinceStart]
-    add                     // [1 + sold, timeSinceStart]
-    TO_WAD_UNSAFE()         // [wad(1 + sold), timeSinceStart]
+    swap1                       // [sold, timeSinceStart]
+    0x01                        // [1, sold, timeSinceStart]
+    add                         // [1 + sold, timeSinceStart]
+    TO_WAD_UNSAFE()             // [wad(1 + sold), timeSinceStart]
+    GET_TARGET_SALE_TIME(fail)  // [targetSaleTime, timeSinceStart]
 
-    // TODO: include get target sale time macro
+    swap1                       // [(timeSinceStart, targetSaleTime]
+    sub                         // [(timeSinceStart - targetSaleTime))
 
-    swap1                   // (timeSinceStart, wad(1 + sold))
-    sub                     // (timeSinceStart - wad(1 + sold), wad(1 + sold))
+    [DECAY_CONSTANT]            // [decayConst, (timeSinceStart - targetSaleTime)]
+    UNSAFE_WAD_MUL()            // [decayConst * (timeSinceStart - targetSaleTime)]
+    EXP_WAD(fail)               // [wadExp(decayConst * (timeSinceStart - targetSaleTime))]
 
-    [DECAY_CONSTANT]         // [decayConst, timeSinceStart - wad(1 + sold))]
-    UNSAFE_WAD_MUL()        
-    WAD_EXP()
-
-    [TARGET_PRICE]
-    WAD_MUL()
-
-    0x00 dup1 mstore
-    0x00 0x20 return
+    [TARGET_PRICE]              // [targetPrice, wadExp(decayConst * (timeSinceStart - targetSaleTime))]
+    WAD_MUL(fail)               // [targetPrice * wadExp(decayConst * (timeSinceStart - targetSaleTime))]
 }
