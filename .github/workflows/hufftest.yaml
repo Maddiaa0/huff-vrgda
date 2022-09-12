@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Huff Tests
-        uses: cheethas/huff-tests-action@2a3699550ff5cce9ae5b83519fbf52c7025a5f8c
+        uses: cheethas/huff-tests-action@v2
